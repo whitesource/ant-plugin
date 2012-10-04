@@ -11,12 +11,21 @@
 	<description>Ant plugin to update WhiteSource projects</description>
 
 	<properties>
-		<ant.version>1.8.4</ant.version>
-		<aether.version>1.12</aether.version>
-		<wss.version>1.0.0-SNAPSHOT</wss.version>
+		<ant.version>1.7.0</ant.version>
+		<wss.version>1.2.0-SNAPSHOT</wss.version>
+		<maven.assembly.version>2.3</maven.assembly.version>
+		<velocity.version>1.7</velocity.version>
+		<commons-io.version>2.1</commons-io.version>
 	</properties>
 
 	<dependencies>
+		
+		<!-- White Source -->
+		<dependency>
+			<groupId>org.whitesource</groupId>
+			<artifactId>wss-agent-api-client</artifactId>
+			<version>${wss.version}</version>
+		</dependency>
 		
 		<!-- Ant -->
 		<dependency>
@@ -26,19 +35,47 @@
 		</dependency>
 
 		<!-- Test -->
-		<dependency>
-			<groupId>org.apache.ant</groupId>
-			<artifactId>ant-testutil</artifactId>
-			<version>${ant.version}</version>
-		</dependency>
+<!-- 		<dependency> -->
+<!-- 			<groupId>org.apache.ant</groupId> -->
+<!-- 			<artifactId>ant-testutil</artifactId> -->
+<!-- 			<version>${ant.version}</version> -->
+<!-- 			<scope>test</scope> -->
+<!-- 		</dependency> -->
 
-		<!-- Aether -->
+		<!-- Utils -->
 		<dependency>
-			<groupId>org.sonatype.aether</groupId>
-			<artifactId>aether-util</artifactId>
-			<version>${aether.version}</version>
+            <groupId>org.apache.velocity</groupId>
+            <artifactId>velocity</artifactId>
+            <version>${velocity.version}</version>
+        </dependency>
+        <dependency>
+		    <groupId>commons-io</groupId>
+		    <artifactId>commons-io</artifactId>
+		    <version>${commons-io.version}</version>
 		</dependency>
 		
 	</dependencies>
+	
+	<build>
+		<plugins>
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+				</configuration>
+				<executions>
+					<execution>
+						<id>make-assembly</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 
 </project>
