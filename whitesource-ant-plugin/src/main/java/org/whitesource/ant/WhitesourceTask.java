@@ -2,7 +2,7 @@ package org.whitesource.ant;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Properties;
@@ -25,7 +25,7 @@ import org.whitesource.api.client.WhitesourceService;
 import org.whitesource.api.client.WssServiceException;
 
 /**
- * Sends an update request to White Source.
+ * Sends an inventory update request to White Source.
  * 
  * @author tom.shapira
  *
@@ -40,44 +40,32 @@ public class WhitesourceTask extends Task {
 	private String apiKey;
 
 	/**
-	 * Project name to be matched with White Source project name.
+	 * Modules to update.
 	 */
-	private String projectName;
-
-	/**
-	 * Project token to match White Source project.
-	 */
-	private String projectToken;
-
-	/**
-	 * Paths to folders and files to update.
-	 */
-	private Vector<Path> paths;
-
+	private Vector<Module> modules;
+	
 	/**
 	 * Whether or not to stop the build when encountering an error.
 	 */
-	private boolean stopBuild;
+	private boolean failOnError;
 
 	/**
 	 * Check policies nested element.
 	 */
-	private Vector<CheckPolicies> checkPolicies = new Vector<CheckPolicies>();
+	private Vector<CheckPolicies> checkPolicies;
 
 	/**
 	 * Url to send requests (debug proposes).
 	 */
-	private String wssurl;
+	private String wssUrl;
 
 	/* --- Members --- */
-
-	private Set<File> fileToUpdate;
 
 	private boolean shouldCheckPolicies;
 
 	private CheckPolicies policyCheck;
 
-	private AgentProjectInfo projectInfo;
+	private Collection<AgentProjectInfo> projectInfos;
 
 	private WhitesourceService service;
 
@@ -87,31 +75,71 @@ public class WhitesourceTask extends Task {
 	public void init() throws BuildException {
 		super.init();
 
-		paths = new Vector<Path>();
-		stopBuild = true;
-		fileToUpdate = new HashSet<File>();
+		modules = new Vector<Module>();
+		checkPolicies = new Vector<CheckPolicies>();
+		failOnError = true;
 		shouldCheckPolicies = false;
+		projectInfos = new ArrayList<AgentProjectInfo>();
 	}
 
 	@Override
 	public void execute() throws BuildException {
 		validate();
+		
+		log("Updating White Source");
+		
+		scanModules();
 
 		createWhitesourceService();
 
-		initProjectInfo();
-
-		getAllFiles();
-
-		collectDependencies();
-
-		sendRequest();
+		updateInventory();
 	}
 
 	/* --- Private methods --- */
 
+	private void scanModules() {
+		log("Collecting OSS usage information");
+		
+		for (Module module : modules) {
+			// create project info
+			AgentProjectInfo projectInfo = new AgentProjectInfo();
+			if (StringUtils.isBlank(module.getName())) {
+				projectInfo.setProjectToken(module.getToken());
+				log("Processing module with token " + module.getToken());
+			} else {
+				// set project name as maven artifactId coordinate
+				projectInfo.setCoordinates(new Coordinates(null, module.getName(), null));
+				log("Processing " + module.getName());
+			}
+			
+			// get all files located in module paths
+			/**
+			 * We're using a set in order to avoid chance of duplicate files.
+			 */
+			Set<File> fileToUpdate = new HashSet<File>();
+			for (Path path : module.getPaths()) {
+				for (String includedFile : path.list()) {
+					fileToUpdate.add(new File(includedFile));
+				}
+			}
+			
+			// calculate SHA-1 for all files
+			for (File file : fileToUpdate) {
+				try {
+					String sha1 = ChecksumUtils.calculateSHA1(file);
+					projectInfo.getDependencies().add(new DependencyInfo(sha1));
+				} catch (IOException e) {
+					log("Problem calculating SHA-1 for '" + file.getName() + "'", e, Project.MSG_DEBUG);
+				}
+			}
+			
+			projectInfos.add(projectInfo);
+			log("Found " + projectInfo.getDependencies().size() + " direct dependencies");
+		}
+	}
+
 	private void createWhitesourceService() {
-		service = new WhitesourceService(Constants.AGENT_TYPE, Constants.AGENT_VERSION, wssurl);
+		service = new WhitesourceService(Constants.AGENT_TYPE, Constants.AGENT_VERSION, wssUrl);
 
 		// set proxy information
         Properties systemProperties = System.getProperties();
@@ -131,143 +159,111 @@ public class WhitesourceTask extends Task {
         }
 	}
 
-	private void sendRequest() {
+	private void updateInventory() {
 		// check policies
 		if (shouldCheckPolicies) {
-			checkPolicies();
-		}
-
-		try {
-			UpdateInventoryResult result = service.update(apiKey, Arrays.asList(projectInfo));
-			logResult(result);
-		} catch (WssServiceException e) {
-			error(Constants.ERROR_UPDATE + e.getMessage());
-		}
-	}
-
-	private void logResult(UpdateInventoryResult result) {
-		log(Constants.RESULT_DOMAIN + result.getOrganization());
-
-		// newly created projects
-		Collection<String> createdProjects = result.getCreatedProjects();
-		if (createdProjects.isEmpty()) {
-			log(Constants.RESULT_NO_NEW_PROJECTS);
-		} else {
-			log(Constants.RESULT_NEW_PROJECTS);
-			for (String projectName : createdProjects) {
-				log(projectName);
-			}
-		}
-
-		// updated projects
-		Collection<String> updatedProjects = result.getUpdatedProjects();
-		if (updatedProjects.isEmpty()) {
-			log(Constants.RESULT_NO_UPDATES);
-		} else {
-			log(Constants.RESULT_UPDATES);
-			for (String projectName : updatedProjects) {
-				log(projectName);
-			}
-		}
-	}
-
-	private void checkPolicies() {
-		try {
-			CheckPoliciesResult result = service.checkPolicies(apiKey, Arrays.asList(projectInfo));
-			generatePoliciesReport(result);
-			if (/*checkPoliciesResult.hasRejections() &&*/ // TODO remove comment when available
-					policyCheck.isFailonrejection()) {
-				throw new BuildException(Constants.POLICIES_REJECTIONS);
-			}
-		} catch (WssServiceException e) {
-			error(Constants.ERROR_CHECK_POLICIES + e.getMessage());
-		}
-	}
-
-	private void generatePoliciesReport(CheckPoliciesResult result) {
-		try {
-			ReportGenerator reportGenerator = new ReportGenerator();
-			reportGenerator.generatePolicyRejectionsReport(result, policyCheck.getReportdir());
-			log(Constants.POLICIES_REPORT_GENERATED, Project.MSG_INFO);
-		} catch (IOException e) {
-			error(Constants.ERROR_CHECK_POLICIES_REPORT);
-		}
-	}
-
-	private void collectDependencies() {
-		// calculate SHA-1 for all files
-		for (File file : fileToUpdate) {
 			try {
-				String sha1 = ChecksumUtils.calculateSHA1(file);
-				log("SHA-1 for '" + file.getName() + "' = " + sha1);
+				log("Checking policies");
+				CheckPoliciesResult result = service.checkPolicies(apiKey, projectInfos);
 				
-				// add dependency to project info
-				projectInfo.getDependencies().add(new DependencyInfo(sha1));
+				// generate report
+				ReportGenerator reportGenerator = new ReportGenerator();
+				reportGenerator.generatePolicyRejectionsReport(result, policyCheck.getReportdir());
+				log("Policies report generated successfully", Project.MSG_INFO);
+				
+				if (result.hasRejections()) {
+					String rejectionsErrorMessage = "Some dependencies did not conform with open source policies, review report for details";
+					if (policyCheck.isFailonrejection()) {
+						throw new BuildException(rejectionsErrorMessage);
+					} else {
+						log(rejectionsErrorMessage);
+					}
+				} else {
+					log("All dependencies conform with open source policies");
+				}
+			} catch (WssServiceException e) {
+				error("A problem occurred while checking policies: " + e.getMessage());
 			} catch (IOException e) {
-				log("Problem calculating SHA-1 for '" + file.getName() + "'", e, Project.MSG_DEBUG);
+				error("Error generating policies report");
 			}
 		}
-	}
 
-	private void getAllFiles() {
-		// get all included files
-		for (Path path : paths) {
-			for (String includedFile : path.list()) {
-				fileToUpdate.add(new File(includedFile));
+		// update inventory
+		try {
+			log("Sending to White Source");
+			UpdateInventoryResult result = service.update(apiKey, projectInfos);
+			
+			log("White Source update results:");
+			log("White Source organization: " + result.getOrganization());
+
+			// newly created projects
+			Collection<String> createdProjects = result.getCreatedProjects();
+			if (createdProjects.isEmpty()) {
+				log("No new projects found");
+			} else {
+				log(createdProjects.size() + " Newly created projects:");
+				for (String projectName : createdProjects) {
+					log(projectName);
+				}
 			}
-		}
-	}
 
-	private void initProjectInfo() {
-		projectInfo = new AgentProjectInfo();
-
-		if (StringUtils.isBlank(apiKey)) {
-			projectInfo.setProjectToken(projectToken);
-		} else {
-			// set project name as maven artifactId coordinate
-			projectInfo.setCoordinates(new Coordinates(null, projectName, null));
+			// updated projects
+			Collection<String> updatedProjects = result.getUpdatedProjects();
+			if (updatedProjects.isEmpty()) {
+				log("No projects were updated");
+			} else {
+				log(updatedProjects.size() + " existing projects were updated:");
+				for (String projectName : updatedProjects) {
+					log(projectName);
+				}
+			}
+		} catch (WssServiceException e) {
+			error("A problem occurred while updating projects: " + e.getMessage());
 		}
 	}
 
 	private void validate() {
 		// api key
 		if (StringUtils.isBlank(apiKey)) {
-			error(Constants.ERROR_MISSING_API_KEY);
+			error("Missing API Key");
 		}
 
-		// paths
-		if (paths.size() < 1) {
-			error(Constants.ERROR_PATH);
-		}
-
-		// project name / token
-		if (StringUtils.isBlank(projectName) && 
-				StringUtils.isBlank(projectToken)) {
-			error(Constants.ERROR_PROJECT_IDENTIFIER);
+		// modules
+		if (modules.size() < 1) {
+			error("No modules set");
+		} else {
+			for (Module project : modules) {
+				// project name / token
+				if (StringUtils.isBlank(project.getName()) && 
+						StringUtils.isBlank(project.getToken())) {
+					error("Module name / token not set");
+				}
+				
+				// paths
+				if (project.getPaths().size() < 1) {
+					error("Path not set");
+				}
+			}
 		}
 
 		// check policies
 		if (!checkPolicies.isEmpty()) {
 			shouldCheckPolicies = true;
-			validateCheckPolicies();
-		}
-	}
+			policyCheck = checkPolicies.iterator().next();
 
-	private void validateCheckPolicies() {
-		policyCheck = checkPolicies.iterator().next();
-
-		if (checkPolicies.size() > 1) {
-			error(Constants.ERROR_CHECK_POLICIES_COUNT);
-		} else {
-			File reportdir = policyCheck.getReportdir();
-			if (reportdir == null || !reportdir.exists()) {
-				error(Constants.ERROR_CHECK_POLICIES_OUTPUT);
+			if (checkPolicies.size() > 1) {
+				error("There should be only one check policies element");
+			} else {
+				File reportdir = policyCheck.getReportdir();
+				if (reportdir == null || !reportdir.exists()) {
+					error("Missing output directory for policies report");
+				}
 			}
 		}
 	}
 
 	private void error(String errorMsg) {
-		if (stopBuild) {
+		if (failOnError) {
 			throw new BuildException(errorMsg);
 		} else {
 			log(errorMsg, Project.MSG_ERR);
@@ -276,22 +272,14 @@ public class WhitesourceTask extends Task {
 
 	/* --- Property set methods --- */
 
-	public void setProjectname(String projectname) {
-		this.projectName = projectname;
+	public void setFilaonerror(boolean failonerror) {
+		this.failOnError = failonerror;
 	}
 
-	public void setStopbuild(boolean stopbuild) {
-		this.stopBuild = stopbuild;
+	public void addModule(Module module) {
+		this.modules.add(module);
 	}
-
-	public void addPath(Path path) {
-		this.paths.add(path);
-	}
-
-	public void setProjecttoken(String projecttoken) {
-		this.projectToken = projecttoken;
-	}
-
+	
 	public void setApikey(String apikey) {
 		this.apiKey = apikey;
 	}
@@ -301,7 +289,7 @@ public class WhitesourceTask extends Task {
 	}
 
 	public void setWssurl(String wssurl) {
-		this.wssurl = wssurl;
+		this.wssUrl = wssurl;
 	}
 
 }
