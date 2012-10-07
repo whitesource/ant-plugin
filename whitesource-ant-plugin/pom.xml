@@ -9,6 +9,42 @@
 
 	<name>WhiteSource ant plugin</name>
 	<description>Ant plugin to update WhiteSource projects</description>
+	<url>http://github.com/whitesource/ant-plugin</url>
+	<inceptionYear>2012</inceptionYear>
+
+	<licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    
+    <scm>
+        <connection>scm:git:git@github.com:whitesource/ant-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:whitesource/ant-plugin.git</developerConnection>
+        <url>git@github.com:whitesource/ant-plugin.git</url>
+    </scm>
+    <issueManagement>
+        <url>https://github.com/whitesource/ant-plugin/issues</url>
+        <system>GitHub Issues</system>
+    </issueManagement>
+    <organization>
+        <name>White Source</name>
+        <url>http://www.whitesourcesoftware.com/</url>
+    </organization>
+    <developers>
+        <developer>
+            <id>tom.shapira</id>
+            <name>Tom Shapira</name>
+            <email>tom.shapira@whitesourcesoftware.com</email>
+        </developer>
+        <developer>
+            <id>edo.shor</id>
+            <name>Edo Shor</name>
+            <email>edo.shor@whitesourcesoftware.com</email>
+        </developer>
+    </developers>
 
 	<properties>
 		<ant.version>1.7.0</ant.version>
