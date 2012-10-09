@@ -272,7 +272,7 @@ public class WhitesourceTask extends Task {
 
 	/* --- Property set methods --- */
 
-	public void setFilaonerror(boolean failonerror) {
+	public void setFailonerror(boolean failonerror) {
 		this.failOnError = failonerror;
 	}
 
