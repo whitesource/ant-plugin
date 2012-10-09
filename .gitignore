@@ -1,5 +1,7 @@
 
-/whitesource-ant-plugin/.project
-/whitesource-ant-plugin/.settings
-/whitesource-ant-plugin/.classpath
-/whitesource-ant-plugin/.gitignore
+.idea/
+*.iml
+
+.project
+.settings
+.classpath
