@@ -109,7 +109,12 @@ public class WhitesourceTask extends Task {
 
 	private void scanModules() {
 		log("Collecting OSS usage information");
-		
+
+        /**
+         * We're using a set in order to avoid chance of duplicate files.
+         */
+        Set<File> filesToUpdate = new HashSet<File>();
+
 		for (Module module : modules) {
 			// create project info
 			AgentProjectInfo projectInfo = new AgentProjectInfo();
@@ -121,20 +126,17 @@ public class WhitesourceTask extends Task {
 				projectInfo.setCoordinates(new Coordinates(null, module.getName(), null));
 				log("Processing " + module.getName());
 			}
-			
+
 			// get all files located in module paths
-			/**
-			 * We're using a set in order to avoid chance of duplicate files.
-			 */
-			Set<File> fileToUpdate = new HashSet<File>();
+            filesToUpdate.clear();
 			for (Path path : module.getPaths()) {
 				for (String includedFile : path.list()) {
-					fileToUpdate.add(new File(includedFile));
+					filesToUpdate.add(new File(includedFile));
 				}
 			}
 			
 			// calculate SHA-1 for all files
-			for (File file : fileToUpdate) {
+			for (File file : filesToUpdate) {
 				try {
 					String sha1 = ChecksumUtils.calculateSHA1(file);
 					projectInfo.getDependencies().add(new DependencyInfo(sha1));
@@ -152,11 +154,10 @@ public class WhitesourceTask extends Task {
 		service = new WhitesourceService(Constants.AGENT_TYPE, Constants.AGENT_VERSION, wssUrl);
 
 		// set proxy information
-        Properties systemProperties = System.getProperties();
-        String proxyHost = systemProperties.getProperty(ProxySetup.HTTP_PROXY_HOST);
-        String proxyPort = systemProperties.getProperty(ProxySetup.HTTP_PROXY_PORT);
-        String proxyUsername = systemProperties.getProperty(ProxySetup.HTTP_PROXY_USERNAME); // optional
-        String proxyPassword = systemProperties.getProperty(ProxySetup.HTTP_PROXY_PASSWORD); // optional
+        String proxyHost = System.getProperty(ProxySetup.HTTP_PROXY_HOST);
+        String proxyPort = System.getProperty(ProxySetup.HTTP_PROXY_PORT);
+        String proxyUsername = System.getProperty(ProxySetup.HTTP_PROXY_USERNAME); // optional
+        String proxyPassword = System.getProperty(ProxySetup.HTTP_PROXY_PASSWORD); // optional
         
         // check if proxy is enabled
         if (!StringUtils.isBlank(proxyHost) &&
