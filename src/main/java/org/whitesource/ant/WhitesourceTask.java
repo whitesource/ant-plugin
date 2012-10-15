@@ -1,13 +1,19 @@
+/**
+ * Copyright (C) 2012 White Source Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.whitesource.ant;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Properties;
-import java.util.Set;
-import java.util.Vector;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.BuildException;
@@ -21,14 +27,18 @@ import org.whitesource.agent.api.dispatch.UpdateInventoryResult;
 import org.whitesource.agent.api.model.AgentProjectInfo;
 import org.whitesource.agent.api.model.Coordinates;
 import org.whitesource.agent.api.model.DependencyInfo;
-import org.whitesource.api.client.WhitesourceService;
-import org.whitesource.api.client.WssServiceException;
+import org.whitesource.agent.report.PolicyCheckReport;
+import org.whitesource.agent.client.WhitesourceService;
+import org.whitesource.agent.client.WssServiceException;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 
 /**
  * Sends an inventory update request to White Source.
  * 
  * @author tom.shapira
- *
  */
 public class WhitesourceTask extends Task {
 
@@ -167,11 +177,12 @@ public class WhitesourceTask extends Task {
 				CheckPoliciesResult result = service.checkPolicies(apiKey, projectInfos);
 				
 				// generate report
-				ReportGenerator reportGenerator = new ReportGenerator();
-				reportGenerator.generatePolicyRejectionsReport(result, policyCheck.getReportdir());
+                PolicyCheckReport report = new PolicyCheckReport(result);
+                report.generate(policyCheck.getReportdir(), false);
 				log("Policies report generated successfully", Project.MSG_INFO);
 				
-				if (result.hasRejections()) {
+				// handle rejections if any
+                if (result.hasRejections()) {
 					String rejectionsErrorMessage = "Some dependencies did not conform with open source policies, review report for details";
 					if (policyCheck.isFailonrejection()) {
 						throw new BuildException(rejectionsErrorMessage);
