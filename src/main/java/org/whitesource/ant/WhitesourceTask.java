@@ -131,26 +131,52 @@ public class WhitesourceTask extends Task {
             filesToUpdate.clear();
 			for (Path path : module.getPaths()) {
 				for (String includedFile : path.list()) {
-					filesToUpdate.add(new File(includedFile));
+                    File file = new File(includedFile);
+                    if (!file.isDirectory()) {
+                        filesToUpdate.add(file);
+                    }
 				}
 			}
 			
 			// calculate SHA-1 for all files
 			for (File file : filesToUpdate) {
-				try {
-					String sha1 = ChecksumUtils.calculateSHA1(file);
-					projectInfo.getDependencies().add(new DependencyInfo(sha1));
+                String fileName = file.getName();
+                DependencyInfo dependency = new DependencyInfo();
+                dependency.setArtifactId(fileName);
+                dependency.setSystemPath(file.getAbsolutePath());
+                try {
+                    dependency.setSha1(ChecksumUtils.calculateSHA1(file));
 				} catch (IOException e) {
-					log("Problem calculating SHA-1 for '" + file.getName() + "'", e, Project.MSG_DEBUG);
-				}
-			}
+                    log("Problem calculating SHA-1 for '" + fileName + "'", e, Project.MSG_DEBUG);
+                }
+                projectInfo.getDependencies().add(dependency);
+            }
 			
 			projectInfos.add(projectInfo);
 			log("Found " + projectInfo.getDependencies().size() + " direct dependencies");
+            debugAgentProjectInfos(projectInfos);
 		}
 	}
 
+    private void debugAgentProjectInfos(Collection<AgentProjectInfo> projectInfos) {
+        log("----------------- dumping projectInfos -----------------", Project.MSG_DEBUG);
+        log("Total number of projects : " + projectInfos.size(), Project.MSG_DEBUG);
+        for (AgentProjectInfo projectInfo : projectInfos) {
+            log("Project coordinates: " + projectInfo.getCoordinates(), Project.MSG_DEBUG);
+            log("Project parent coordinates: " + projectInfo.getParentCoordinates(), Project.MSG_DEBUG);
+            log("Project project token: " + projectInfo.getProjectToken(), Project.MSG_DEBUG);
+
+            Collection<DependencyInfo> dependencies = projectInfo.getDependencies();
+            log("total # of dependencies: " + dependencies.size(), Project.MSG_DEBUG);
+            for (DependencyInfo info : dependencies) {
+                log(info + " SHA-1: " + info.getSha1(), Project.MSG_DEBUG);
+            }
+        }
+        log("----------------- dump finished -----------------", Project.MSG_DEBUG);
+    }
+
 	private void createWhitesourceService() {
+        log("Service Url is " + wssUrl, Project.MSG_DEBUG);
 		service = new WhitesourceService(Constants.AGENT_TYPE, Constants.AGENT_VERSION, wssUrl);
 
 		// set proxy information
@@ -160,8 +186,8 @@ public class WhitesourceTask extends Task {
         String proxyPassword = System.getProperty(ProxySetup.HTTP_PROXY_PASSWORD); // optional
         
         // check if proxy is enabled
-        if (!StringUtils.isBlank(proxyHost) &&
-        		!StringUtils.isBlank(proxyPort)) {
+        if (!StringUtils.isBlank(proxyHost) && !StringUtils.isBlank(proxyPort)) {
+            log("Using proxy server: " + proxyHost + ":" + proxyPort, Project.MSG_DEBUG);
         	service.getClient().setProxy(
         			proxyHost,
         			Integer.parseInt(proxyPort),
