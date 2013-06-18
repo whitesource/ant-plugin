@@ -96,7 +96,7 @@ public class WhitesourceTask extends Task {
     public void execute() throws BuildException {
         validate();
         scanModules();
-        createWhitesourceService();
+        createService();
         checkPolicies();
         updateInventory();
     }
@@ -182,7 +182,7 @@ public class WhitesourceTask extends Task {
         }
     }
 
-    private void createWhitesourceService() {
+    private void createService() {
         log("Service Url is " + wssUrl, Project.MSG_DEBUG);
         service = new WhitesourceService(Constants.AGENT_TYPE, Constants.AGENT_VERSION, wssUrl);
 
@@ -210,34 +210,34 @@ public class WhitesourceTask extends Task {
     }
 
     private void checkPolicies() {
-        if (!shouldCheckPolicies) { return; }
-
-        log("Checking policies");
-        try {
-            CheckPoliciesResult result = service.checkPolicies(apiKey, projectInfos);
-            handlePoliciesResult(result);
-        } catch (WssServiceException e) {
-            error("A problem occurred while checking policies: " + e.getMessage());
+        if (shouldCheckPolicies) {
+            log("Checking policies");
+            try {
+                CheckPoliciesResult result = service.checkPolicies(apiKey, projectInfos);
+                handlePoliciesResult(result);
+            } catch (WssServiceException e) {
+                error(e);
+            }
         }
     }
 
     private void handlePoliciesResult(CheckPoliciesResult result) {
         // generate report
         try {
+            log("Creating policies report", Project.MSG_INFO);
             PolicyCheckReport report = new PolicyCheckReport(result);
             report.generate(policyCheck.getReportdir(), false);
-            log("Policies report generated successfully", Project.MSG_INFO);
         } catch (IOException e) {
-            error("Error generating policies report");
+            error(e);
         }
 
         // handle rejections if any
         if (result.hasRejections()) {
-            String rejectionsErrorMessage = "Some dependencies did not conform with open source policies, review report for details.";
+            String rejectionsErrorMessage = "Some dependencies does not conform with open source policies, see report for details.";
             if (policyCheck.isFailonrejection()) {
                 throw new BuildException(rejectionsErrorMessage);
             } else {
-                log(rejectionsErrorMessage);
+                log(rejectionsErrorMessage, Project.MSG_WARN);
             }
         } else {
             log("All dependencies conform with open source policies");
@@ -286,6 +286,14 @@ public class WhitesourceTask extends Task {
             throw new BuildException(errorMsg);
         } else {
             log(errorMsg, Project.MSG_ERR);
+        }
+    }
+
+    private void error(Exception ex) {
+        if (failOnError) {
+            throw new BuildException(ex);
+        } else {
+            log(ex, Project.MSG_ERR);
         }
     }
 
