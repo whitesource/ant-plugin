@@ -23,8 +23,8 @@
         <connection>scm:git:git@github.com:whitesource/ant-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:whitesource/ant-plugin.git</developerConnection>
         <url>git@github.com:whitesource/ant-plugin.git</url>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
     <issueManagement>
         <url>https://github.com/whitesource/ant-plugin/issues</url>
         <system>GitHub Issues</system>
@@ -48,8 +48,7 @@
 
     <properties>
         <ant.version>1.7.0</ant.version>
-        <wss.version>1.2.0</wss.version>
-        <velocity.version>1.7</velocity.version>
+        <wss.version>1.2.3</wss.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -238,7 +237,7 @@
                 <plugin>
                     <groupId>org.whitesource</groupId>
                     <artifactId>whitesource-maven-plugin</artifactId>
-                    <version>1.1.2</version>
+                    <version>1.1.5</version>
                 </plugin>
                 <plugin>
                     <groupId>com.mycila.maven-license-plugin</groupId>
@@ -259,30 +258,8 @@
                 <plugins>
                     <plugin>
                         <groupId>com.github.github</groupId>
-                        <artifactId>downloads-maven-plugin</artifactId>
-                        <version>0.6</version>
-                        <configuration>
-                            <server>github</server>
-                            <description>${project.version} release of ${project.name}</description>
-                            <override>true</override>
-                            <includeAttached>false</includeAttached>
-                            <includes>
-                                <include>*.jar</include>
-                            </includes>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>upload</goal>
-                                </goals>
-                                <phase>install</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>com.github.github</groupId>
                         <artifactId>site-maven-plugin</artifactId>
-                        <version>0.7</version>
+                        <version>0.8</version>
                         <configuration>
                             <server>github</server>
                             <merge>true</merge>
