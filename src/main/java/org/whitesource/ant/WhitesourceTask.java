@@ -188,24 +188,18 @@ public class WhitesourceTask extends Task {
 
         // set proxy information
         String proxyHost = System.getProperty(ProxySetup.HTTP_PROXY_HOST);
-        String proxyPort = System.getProperty(ProxySetup.HTTP_PROXY_PORT);
-        String proxyUsername = System.getProperty(ProxySetup.HTTP_PROXY_USERNAME); // optional
-        String proxyPassword = System.getProperty(ProxySetup.HTTP_PROXY_PASSWORD); // optional
+        String proxyPort = System.getProperty(ProxySetup.HTTP_PROXY_PORT, "80");
+        String proxyUsername = System.getProperty(ProxySetup.HTTP_PROXY_USERNAME);
+        String proxyPassword = System.getProperty(ProxySetup.HTTP_PROXY_PASSWORD);
         if (StringUtils.isBlank(proxyHost)) {
             proxyHost = System.getProperty(ProxySetup.HTTPS_PROXY_HOST);
-            proxyPort = System.getProperty(ProxySetup.HTTPS_PROXY_PORT);
-            proxyUsername = null;
-            proxyPassword = null;
+            proxyPort = System.getProperty(ProxySetup.HTTPS_PROXY_PORT, "443");
         }
 
         // check if proxy is enabled
         if (!StringUtils.isBlank(proxyHost) && !StringUtils.isBlank(proxyPort)) {
             log("Using proxy server: " + proxyHost + ":" + proxyPort, Project.MSG_DEBUG);
-            service.getClient().setProxy(
-                    proxyHost,
-                    Integer.parseInt(proxyPort),
-                    proxyUsername,
-                    proxyPassword);
+            service.getClient().setProxy(proxyHost, Integer.parseInt(proxyPort), proxyUsername, proxyPassword);
         }
     }
 
