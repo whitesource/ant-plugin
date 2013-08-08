@@ -50,6 +50,16 @@ public class WhitesourceTask extends Task {
     private String apiKey;
 
     /**
+     * Name or unique identifier of the product to update.
+     */
+    private String product;
+
+    /**
+     * Version of the product to update.
+     */
+    private String productVersion;
+
+    /**
      * Modules to update.
      */
     private Vector<Module> modules;
@@ -111,13 +121,24 @@ public class WhitesourceTask extends Task {
 
         // modules
         if (modules.isEmpty()) {
-            error("No modules set");
+            Module module = new Module(); // Treat whole project as single module
+            String name = getProject().getName();
+            module.setName(StringUtils.isBlank(name) ? "Default Module" : name);
+            addDefaultPaths(module);
         } else {
-            for (Module project : modules) {
-                if (StringUtils.isBlank(project.getName()) && StringUtils.isBlank(project.getToken())) {
+            int emptyModules = 0;
+            for (Module module : modules) {
+                if (StringUtils.isBlank(module.getName()) && StringUtils.isBlank(module.getToken())) {
                     error("Expecting module name or token");
                 }
-                if (project.getPaths().isEmpty()) {
+                if (module.getPaths().isEmpty()) {
+                    emptyModules++;
+                }
+            }
+            if (emptyModules > 0) {
+                if (modules.size() == 1) {
+                    addDefaultPaths(modules.iterator().next());
+                } else {
                     error("Path not set");
                 }
             }
@@ -129,10 +150,19 @@ public class WhitesourceTask extends Task {
             policyCheck = checkPolicies.iterator().next();
             File reportDir = policyCheck.getReportdir();
             if (reportDir == null) {
-                error("Please specify output directory for policies report");
-            } else if (!reportDir.exists() && !reportDir.mkdirs()) {
+                reportDir = new File(this.getProject().getBaseDir(), "whitesource");
+                policyCheck.setReportdir(reportDir);
+            }
+            if (!reportDir.exists() && !reportDir.mkdirs()) {
                 error("Policies report directory doesn't exists and can not be created");
             }
+        }
+    }
+
+    private void addDefaultPaths(Module module) {
+        Project project = getProject();
+        for (String extension : Constants.DEFAULT_SCAN_EXTENSIONS) {
+            module.addPath(new Path(project, "**/*." + extension));
         }
     }
 
@@ -185,29 +215,13 @@ public class WhitesourceTask extends Task {
     private void createService() {
         log("Service Url is " + wssUrl, Project.MSG_DEBUG);
         service = new WhitesourceService(Constants.AGENT_TYPE, Constants.AGENT_VERSION, wssUrl);
-
-        // set proxy information
-        String proxyHost = System.getProperty(ProxySetup.HTTP_PROXY_HOST);
-        String proxyPort = System.getProperty(ProxySetup.HTTP_PROXY_PORT, "80");
-        String proxyUsername = System.getProperty(ProxySetup.HTTP_PROXY_USERNAME);
-        String proxyPassword = System.getProperty(ProxySetup.HTTP_PROXY_PASSWORD);
-        if (StringUtils.isBlank(proxyHost)) {
-            proxyHost = System.getProperty(ProxySetup.HTTPS_PROXY_HOST);
-            proxyPort = System.getProperty(ProxySetup.HTTPS_PROXY_PORT, "443");
-        }
-
-        // check if proxy is enabled
-        if (!StringUtils.isBlank(proxyHost) && !StringUtils.isBlank(proxyPort)) {
-            log("Using proxy server: " + proxyHost + ":" + proxyPort, Project.MSG_DEBUG);
-            service.getClient().setProxy(proxyHost, Integer.parseInt(proxyPort), proxyUsername, proxyPassword);
-        }
     }
 
     private void checkPolicies() {
         if (shouldCheckPolicies) {
             log("Checking policies");
             try {
-                CheckPoliciesResult result = service.checkPolicies(apiKey, projectInfos);
+                CheckPoliciesResult result = service.checkPolicies(apiKey, product, productVersion, projectInfos);
                 handlePoliciesResult(result);
             } catch (WssServiceException e) {
                 error(e);
@@ -241,7 +255,7 @@ public class WhitesourceTask extends Task {
     private void updateInventory() {
         log("Updating White Source");
         try {
-            UpdateInventoryResult result = service.update(apiKey, projectInfos);
+            UpdateInventoryResult result = service.update(apiKey, product, productVersion, projectInfos);
             logUpdateResult(result);
         } catch (WssServiceException e) {
             error("A problem occurred while updating projects: " + e.getMessage());
@@ -330,4 +344,11 @@ public class WhitesourceTask extends Task {
         this.wssUrl = wssurl;
     }
 
+    public void setProduct(String product) {
+        this.product = product;
+    }
+
+    public void setProductVersion(String productVersion) {
+        this.productVersion = productVersion;
+    }
 }

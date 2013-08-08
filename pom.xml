@@ -48,7 +48,7 @@
 
     <properties>
         <ant.version>1.7.0</ant.version>
-        <wss.version>1.2.4</wss.version>
+        <wss.version>1.2.6-SNAPSHOT</wss.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 

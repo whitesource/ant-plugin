@@ -15,6 +15,10 @@
  */
 package org.whitesource.ant;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Constants used by ant task. 
  * 
@@ -28,7 +32,16 @@ public final class Constants {
 	public static final String AGENT_TYPE = "ant-task";
 	
 	public static final String AGENT_VERSION = "1.0";
-	
+
+    public static final List<String> DEFAULT_SCAN_EXTENSIONS = new ArrayList<String>();
+    static {
+        DEFAULT_SCAN_EXTENSIONS.addAll(
+                Arrays.asList("jar", "war", "ear", "par", "rar",
+                        "dll", "exe", "ko", "so", "msi",
+                        "zip", "tar", "tar.gz",
+                        "swc", "swf"));
+    }
+
 	/* --- Constructors --- */
 	
 	/**
