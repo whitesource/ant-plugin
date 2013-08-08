@@ -19,8 +19,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
+import org.apache.tools.ant.types.FileSet;
 import org.apache.tools.ant.types.Path;
-import org.apache.tools.ant.util.ProxySetup;
 import org.whitesource.agent.api.ChecksumUtils;
 import org.whitesource.agent.api.dispatch.CheckPoliciesResult;
 import org.whitesource.agent.api.dispatch.UpdateInventoryResult;
@@ -104,7 +104,7 @@ public class WhitesourceTask extends Task {
 
     @Override
     public void execute() throws BuildException {
-        validate();
+        validateAndPrepare();
         scanModules();
         createService();
         checkPolicies();
@@ -113,18 +113,23 @@ public class WhitesourceTask extends Task {
 
 	/* --- Private methods --- */
 
-    private void validate() {
+    private void validateAndPrepare() {
         // api key
         if (StringUtils.isBlank(apiKey)) {
             error("Missing API Key");
         }
 
+        // product
+        if (StringUtils.isBlank(product)) {
+            product = getProject().getName();
+        }
+
         // modules
         if (modules.isEmpty()) {
             Module module = new Module(); // Treat whole project as single module
-            String name = getProject().getName();
-            module.setName(StringUtils.isBlank(name) ? "Default Module" : name);
+            module.setName("Default Module");
             addDefaultPaths(module);
+            modules.add(module);
         } else {
             int emptyModules = 0;
             for (Module module : modules) {
@@ -150,7 +155,7 @@ public class WhitesourceTask extends Task {
             policyCheck = checkPolicies.iterator().next();
             File reportDir = policyCheck.getReportdir();
             if (reportDir == null) {
-                reportDir = new File(this.getProject().getBaseDir(), "whitesource");
+                reportDir = new File(this.getProject().getBaseDir(), "reports");
                 policyCheck.setReportdir(reportDir);
             }
             if (!reportDir.exists() && !reportDir.mkdirs()) {
@@ -161,9 +166,18 @@ public class WhitesourceTask extends Task {
 
     private void addDefaultPaths(Module module) {
         Project project = getProject();
+
+        FileSet fs = new FileSet();
+        fs.setDir(project.getBaseDir());
+        List<String> includes = new ArrayList<String>();
         for (String extension : Constants.DEFAULT_SCAN_EXTENSIONS) {
-            module.addPath(new Path(project, "**/*." + extension));
+            includes.add("**/*." + extension);
         }
+        fs.setIncludes(StringUtils.join(includes, ","));
+
+        Path path = new Path(project);
+        path.addFileset(fs);
+        module.addPath(path);
     }
 
     private void scanModules() {
