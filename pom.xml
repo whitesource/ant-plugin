@@ -23,7 +23,6 @@
         <connection>scm:git:git@github.com:whitesource/ant-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:whitesource/ant-plugin.git</developerConnection>
         <url>git@github.com:whitesource/ant-plugin.git</url>
-        <tag>HEAD</tag>
     </scm>
     <issueManagement>
         <url>https://github.com/whitesource/ant-plugin/issues</url>
@@ -48,7 +47,7 @@
 
     <properties>
         <ant.version>1.7.0</ant.version>
-        <wss.version>1.2.6-SNAPSHOT</wss.version>
+        <wss.version>1.2.6</wss.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -237,7 +236,7 @@
                 <plugin>
                     <groupId>org.whitesource</groupId>
                     <artifactId>whitesource-maven-plugin</artifactId>
-                    <version>1.1.5</version>
+                    <version>1.1.6</version>
                 </plugin>
                 <plugin>
                     <groupId>com.mycila.maven-license-plugin</groupId>
