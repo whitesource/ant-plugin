@@ -6,10 +6,10 @@
     <link>http://github.com/whitesource/ant-plugin</link>
     <description>White Source ant plugin - Checkstyle report</description>
     <language>en-us</language>
-    <copyright>&#169;2012 White Source</copyright>
+    <copyright>&#169;2012 - 2013 White Source</copyright>
     <item>
       <title>File: 4,
-             Errors: 434,
+             Errors: 229,
              Warnings: 0,
              Infos: 0
       </title>
@@ -80,7 +80,7 @@
                   0
                 </td>
                 <td>
-                  281
+                  76
                 </td>
               </tr>
                       </tbody>
