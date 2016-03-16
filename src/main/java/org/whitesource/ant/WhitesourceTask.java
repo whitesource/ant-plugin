@@ -22,14 +22,14 @@ import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.FileSet;
 import org.apache.tools.ant.types.Path;
 import org.whitesource.agent.api.ChecksumUtils;
-import org.whitesource.agent.api.dispatch.CheckPoliciesResult;
+import org.whitesource.agent.api.dispatch.CheckPolicyComplianceResult;
 import org.whitesource.agent.api.dispatch.UpdateInventoryResult;
 import org.whitesource.agent.api.model.AgentProjectInfo;
 import org.whitesource.agent.api.model.Coordinates;
 import org.whitesource.agent.api.model.DependencyInfo;
-import org.whitesource.agent.report.PolicyCheckReport;
 import org.whitesource.agent.client.WhitesourceService;
 import org.whitesource.agent.client.WssServiceException;
+import org.whitesource.agent.report.PolicyCheckReport;
 
 import java.io.File;
 import java.io.IOException;
@@ -83,6 +83,8 @@ public class WhitesourceTask extends Task {
 
     private boolean shouldCheckPolicies;
 
+    private boolean forceCheckAllDependencies;
+
     private CheckPolicies policyCheck;
 
     private Collection<AgentProjectInfo> projectInfos;
@@ -99,6 +101,7 @@ public class WhitesourceTask extends Task {
         checkPolicies = new Vector<CheckPolicies>();
         failOnError = true;
         shouldCheckPolicies = false;
+        forceCheckAllDependencies = false;
         projectInfos = new ArrayList<AgentProjectInfo>();
     }
 
@@ -153,6 +156,7 @@ public class WhitesourceTask extends Task {
         if (!checkPolicies.isEmpty()) {
             shouldCheckPolicies = true;
             policyCheck = checkPolicies.iterator().next();
+            forceCheckAllDependencies = policyCheck.isForcecheckalldependencies();
             File reportDir = policyCheck.getReportdir();
             if (reportDir == null) {
                 reportDir = new File(this.getProject().getBaseDir(), "reports");
@@ -235,7 +239,8 @@ public class WhitesourceTask extends Task {
         if (shouldCheckPolicies) {
             log("Checking policies");
             try {
-                CheckPoliciesResult result = service.checkPolicies(apiKey, product, productVersion, projectInfos);
+                CheckPolicyComplianceResult result = service.checkPolicyCompliance(
+                        apiKey, product, productVersion, projectInfos, forceCheckAllDependencies);
                 handlePoliciesResult(result);
             } catch (WssServiceException e) {
                 error(e);
@@ -243,7 +248,7 @@ public class WhitesourceTask extends Task {
         }
     }
 
-    private void handlePoliciesResult(CheckPoliciesResult result) {
+    private void handlePoliciesResult(CheckPolicyComplianceResult result) {
         // generate report
         try {
             log("Creating policies report", Project.MSG_INFO);

@@ -4,7 +4,7 @@
 
     <groupId>org.whitesource</groupId>
     <artifactId>whitesource-ant-plugin</artifactId>
-    <version>1.2-SNAPSHOT</version>
+    <version>1.3-SNAPSHOT</version>
 
     <name>White Source ant plugin</name>
     <description>Ant plugin to update WhiteSource projects</description>
@@ -47,7 +47,7 @@
 
     <properties>
         <ant.version>1.7.0</ant.version>
-        <wss.version>1.2.6</wss.version>
+        <agent.api.version>2.2.7</agent.api.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -57,12 +57,12 @@
         <dependency>
             <groupId>org.whitesource</groupId>
             <artifactId>wss-agent-api-client</artifactId>
-            <version>${wss.version}</version>
+            <version>${agent.api.version}</version>
         </dependency>
         <dependency>
             <groupId>org.whitesource</groupId>
             <artifactId>wss-agent-report</artifactId>
-            <version>${wss.version}</version>
+            <version>${agent.api.version}</version>
         </dependency>
 
         <!-- Ant -->

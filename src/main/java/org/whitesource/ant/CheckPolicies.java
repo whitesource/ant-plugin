@@ -36,11 +36,17 @@ public class CheckPolicies {
 	 * Whether or not to fail the build if policy rejects a library.
 	 */
 	private boolean failonrejection;
-	
+
+	/**
+	 *
+	 */
+	private boolean forcecheckalldependencies;
+
 	/* --- Constructors --- */
 	
 	public CheckPolicies() {
 		failonrejection = true;
+		forcecheckalldependencies = false;
 	}
 
 	/* --- Getters / Setters --- */
@@ -59,5 +65,13 @@ public class CheckPolicies {
 
 	public File getReportdir() {
 		return reportdir;
+	}
+
+	public boolean isForcecheckalldependencies() {
+		return forcecheckalldependencies;
+	}
+
+	public void setForcecheckalldependencies(boolean forcecheckalldependencies) {
+		this.forcecheckalldependencies = forcecheckalldependencies;
 	}
 }

@@ -31,7 +31,7 @@ public final class Constants {
 	
 	public static final String AGENT_TYPE = "ant-task";
 	
-	public static final String AGENT_VERSION = "1.0";
+	public static final String AGENT_VERSION = "2.2.7";
 
     public static final List<String> DEFAULT_SCAN_EXTENSIONS = new ArrayList<String>();
     static {
