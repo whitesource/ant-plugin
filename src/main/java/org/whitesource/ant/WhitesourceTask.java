@@ -1,12 +1,12 @@
 /**
  * Copyright (C) 2012 White Source Ltd.
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -79,6 +79,11 @@ public class WhitesourceTask extends Task {
      */
     private String wssUrl;
 
+    /**
+     * Whether or not to update inventory when encountering policy violation.
+     */
+    private boolean forceUpdate;
+
 	/* --- Members --- */
 
     private boolean shouldCheckPolicies;
@@ -100,6 +105,7 @@ public class WhitesourceTask extends Task {
         modules = new Vector<Module>();
         checkPolicies = new Vector<CheckPolicies>();
         failOnError = true;
+        forceUpdate = false;
         shouldCheckPolicies = false;
         forceCheckAllDependencies = false;
         projectInfos = new ArrayList<AgentProjectInfo>();
@@ -261,10 +267,15 @@ public class WhitesourceTask extends Task {
         // handle rejections if any
         if (result.hasRejections()) {
             String rejectionsErrorMessage = "Some dependencies does not conform with open source policies, see report for details.";
-            if (policyCheck.isFailonrejection()) {
+            String forceUpdateMessage = "Some dependencies violate open source policies, however all were force updated to organization inventory.";
+            if (policyCheck.isFailonrejection() && !forceUpdate) {
                 throw new BuildException(rejectionsErrorMessage);
             } else {
-                log(rejectionsErrorMessage, Project.MSG_WARN);
+                if (forceUpdate) {
+                    log(forceUpdateMessage, Project.MSG_WARN);
+                } else {
+                    log(rejectionsErrorMessage, Project.MSG_WARN);
+                }
             }
         } else {
             log("All dependencies conform with open source policies");
