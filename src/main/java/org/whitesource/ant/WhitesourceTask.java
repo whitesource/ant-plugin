@@ -116,7 +116,14 @@ public class WhitesourceTask extends Task {
         validateAndPrepare();
         scanModules();
         createService();
-        checkPolicies();
+        try {
+            checkPolicies();
+        } catch (BuildException e) {
+            if (forceUpdate) {
+                updateInventory();
+                error(e);
+            }
+        }
         updateInventory();
     }
 
@@ -268,14 +275,13 @@ public class WhitesourceTask extends Task {
         if (result.hasRejections()) {
             String rejectionsErrorMessage = "Some dependencies does not conform with open source policies, see report for details.";
             String forceUpdateMessage = "Some dependencies violate open source policies, however all were force updated to organization inventory.";
-            if (policyCheck.isFailonrejection() && !forceUpdate) {
-                throw new BuildException(rejectionsErrorMessage);
-            } else {
-                if (forceUpdate) {
+            if (forceUpdate) {
+                if (policyCheck.isFailonrejection()) {
                     log(forceUpdateMessage, Project.MSG_WARN);
-                } else {
-                    log(rejectionsErrorMessage, Project.MSG_WARN);
+                    error(rejectionsErrorMessage);
                 }
+            } else if (policyCheck.isFailonrejection()) {
+                log(rejectionsErrorMessage, Project.MSG_WARN);
             }
         } else {
             log("All dependencies conform with open source policies");
