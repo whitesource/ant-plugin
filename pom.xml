@@ -4,7 +4,7 @@
 
     <groupId>org.whitesource</groupId>
     <artifactId>whitesource-ant-plugin</artifactId>
-    <version>1.5</version>
+    <version>1.6-SNAPSHOT</version>
 
     <name>White Source ant plugin</name>
     <description>Ant plugin to update WhiteSource projects</description>
@@ -236,7 +236,10 @@
                 <plugin>
                     <groupId>org.whitesource</groupId>
                     <artifactId>whitesource-maven-plugin</artifactId>
-                    <version>1.1.6</version>
+                    <version>3.2.5</version>
+                    <configuration>
+                        <orgToken>${whitesource.orgToken}</orgToken>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>com.mycila.maven-license-plugin</groupId>
