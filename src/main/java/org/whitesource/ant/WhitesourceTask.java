@@ -387,4 +387,8 @@ public class WhitesourceTask extends Task {
     public void setProductVersion(String productVersion) {
         this.productVersion = productVersion;
     }
+
+    public void setForceUpdate(boolean forceUpdate) {
+        this.forceUpdate = forceUpdate;
+    }
 }
