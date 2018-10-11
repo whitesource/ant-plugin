@@ -4,7 +4,7 @@
 
     <groupId>org.whitesource</groupId>
     <artifactId>whitesource-ant-plugin</artifactId>
-    <version>1.7-SNAPSHOT</version>
+    <version>18.10.1-SNAPSHOT</version>
 
     <name>White Source ant plugin</name>
     <description>Ant plugin to update WhiteSource projects</description>
