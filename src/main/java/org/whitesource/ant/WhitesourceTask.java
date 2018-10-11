@@ -21,14 +21,17 @@ import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.FileSet;
 import org.apache.tools.ant.types.Path;
-import org.whitesource.agent.api.ChecksumUtils;
 import org.whitesource.agent.api.dispatch.CheckPolicyComplianceResult;
 import org.whitesource.agent.api.dispatch.UpdateInventoryResult;
 import org.whitesource.agent.api.model.AgentProjectInfo;
+import org.whitesource.agent.api.model.ChecksumType;
 import org.whitesource.agent.api.model.Coordinates;
 import org.whitesource.agent.api.model.DependencyInfo;
 import org.whitesource.agent.client.WhitesourceService;
 import org.whitesource.agent.client.WssServiceException;
+import org.whitesource.agent.hash.ChecksumUtils;
+import org.whitesource.agent.hash.HashAlgorithm;
+import org.whitesource.agent.hash.HashCalculator;
 import org.whitesource.agent.report.PolicyCheckReport;
 
 import java.io.File;
@@ -95,6 +98,8 @@ public class WhitesourceTask extends Task {
     private Collection<AgentProjectInfo> projectInfos;
 
     private WhitesourceService service;
+
+    private static final String JAVA_SCRIPT_REGEX = ".*\\.js";
 
 	/* --- Overridden Ant Task methods --- */
 
@@ -222,25 +227,51 @@ public class WhitesourceTask extends Task {
                 }
             }
 
-            // calculate SHA-1 for all files
             Collection<DependencyInfo> dependencies = projectInfo.getDependencies();
             for (File file : filesToUpdate) {
-                String fileName = file.getName();
-                DependencyInfo dependency = new DependencyInfo();
-                dependency.setArtifactId(fileName);
-                dependency.setSystemPath(file.getAbsolutePath());
-                try {
-                    dependency.setSha1(ChecksumUtils.calculateSHA1(file));
-                } catch (IOException e) {
-                    log("Problem calculating SHA-1 for '" + fileName + "'", e, Project.MSG_DEBUG);
-                }
-                dependencies.add(dependency);
+                dependencies.add(createDependencyInfo(file));
             }
 
             projectInfos.add(projectInfo);
             log("Found " + dependencies.size() + " direct dependencies");
             debugAgentProjectInfos(projectInfos);
         }
+    }
+
+    private DependencyInfo createDependencyInfo(File dependencyFile) {
+        String fileName = dependencyFile.getName();
+        DependencyInfo dependency = new DependencyInfo();
+        try {
+            dependency.setFilename(fileName);
+            dependency.setArtifactId(fileName);
+            dependency.setSystemPath(dependencyFile.getAbsolutePath());
+
+            // Calculate sha1
+            dependency.setSha1(ChecksumUtils.calculateSHA1(dependencyFile));
+
+            // Calculate md5
+            dependency.addChecksum(ChecksumType.MD5, ChecksumUtils.calculateHash(dependencyFile, HashAlgorithm.MD5));
+
+            // handle JavaScript files
+            if (fileName.toLowerCase().matches(JAVA_SCRIPT_REGEX)) {
+                Map<ChecksumType, String> javaScriptChecksums;
+                try {
+                    javaScriptChecksums = new HashCalculator().calculateJavaScriptHashes(dependencyFile);
+                    for (Map.Entry<ChecksumType, String> entry : javaScriptChecksums.entrySet()) {
+                        dependency.addChecksum(entry.getKey(), entry.getValue());
+                    }
+                } catch (Exception e) {
+                   log("Failed to calculate javaScript hash for file: " + dependencyFile.getPath() + ", error: "+e.getMessage(), Project.MSG_WARN);
+                }
+            }
+
+            // Calculate super hash
+            ChecksumUtils.calculateSuperHash(dependency, dependencyFile);
+        } catch (IOException e) {
+            log("Failed to create dependency " + fileName + " to dependency list: " + e.getMessage(), Project.MSG_ERR);
+            dependency = null;
+        }
+        return dependency;
     }
 
     private void createService() {
