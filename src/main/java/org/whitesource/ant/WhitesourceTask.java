@@ -275,8 +275,8 @@ public class WhitesourceTask extends Task {
     }
 
     private void createService() {
-        log("Service Url is " + wssUrl, Project.MSG_DEBUG);
-        service = new WhitesourceService(Constants.AGENT_TYPE, Constants.AGENT_VERSION, wssUrl);
+        log("Service Url is " + wssUrl);
+        service = new WhitesourceService(Constants.AGENT_TYPE, Constants.AGENT_VERSION, Constants.PLUGIN_VERSION, wssUrl);
     }
 
     private void checkPolicies() {
