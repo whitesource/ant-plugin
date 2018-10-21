@@ -21,7 +21,7 @@ import java.util.Vector;
 
 /**
  * This object models a project module in the workspace.
- * Usage - Declare a <module/> tag in the ant task.
+ * Usage - Declare a module tag in the ant task.
  * 
  * @author tom.shapira
  *
