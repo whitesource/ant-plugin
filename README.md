@@ -1,6 +1,6 @@
 White Source Ant Tasks
 ===================
-
+ 
 An [external update agent][1] for projects built with [Apache Ant][2].
 
 The task looks for open source usage in your projects and update your [White Source][3] account.
