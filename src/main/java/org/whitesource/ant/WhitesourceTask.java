@@ -15,12 +15,14 @@
  */
 package org.whitesource.ant;
 
+import ch.qos.logback.classic.Level;
 import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.FileSet;
 import org.apache.tools.ant.types.Path;
+import org.slf4j.Logger;
 import org.whitesource.agent.api.dispatch.CheckPolicyComplianceResult;
 import org.whitesource.agent.api.dispatch.UpdateInventoryResult;
 import org.whitesource.agent.api.model.AgentProjectInfo;
@@ -33,6 +35,7 @@ import org.whitesource.agent.hash.ChecksumUtils;
 import org.whitesource.agent.hash.HashAlgorithm;
 import org.whitesource.agent.hash.HashCalculator;
 import org.whitesource.agent.report.PolicyCheckReport;
+import org.whitesource.ant.utils.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,7 +48,16 @@ import java.util.*;
  */
 public class WhitesourceTask extends Task {
 
-	/* --- Property members --- */
+    /* --- Static members --- */
+
+    public static Logger logger;
+
+    /* --- Property members --- */
+
+    /**
+     * Log Level for reports .
+     */
+    private String logLevel;
 
     /**
      * Unique identifier of the organization with White Source.
@@ -135,6 +147,9 @@ public class WhitesourceTask extends Task {
 	/* --- Private methods --- */
 
     private void validateAndPrepare() {
+
+        setLoggerConfiguration(logLevel);
+
         // api key
         if (StringUtils.isBlank(apiKey)) {
             error("Missing API Key");
@@ -186,6 +201,18 @@ public class WhitesourceTask extends Task {
         }
     }
 
+    private static void setLoggerConfiguration(String logLevel) {
+        logger = LoggerFactory.getLogger(WhitesourceTask.class);
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+
+        if (logLevel != null && logLevel.equalsIgnoreCase("debug")){
+            root.setLevel(Level.toLevel(logLevel, Level.DEBUG));
+        }
+        else {
+            root.setLevel(Level.toLevel(logLevel, Level.INFO));
+        }
+    }
+
     private void addDefaultPaths(Module module) {
         Project project = getProject();
 
@@ -203,17 +230,17 @@ public class WhitesourceTask extends Task {
     }
 
     private void scanModules() {
-        log("Collecting OSS usage information");
+        logger.info("Collecting OSS usage information");
 
         for (Module module : modules) {
             // create project info
             AgentProjectInfo projectInfo = new AgentProjectInfo();
             if (StringUtils.isBlank(module.getName())) {
                 projectInfo.setProjectToken(module.getToken());
-                log("Processing module with token " + module.getToken());
+                logger.info("Processing module with token " + module.getToken());
             } else {
                 projectInfo.setCoordinates(new Coordinates(null, module.getName(), null));
-                log("Processing " + module.getName());
+                logger.info("Processing " + module.getName());
             }
 
             // get all files located in module paths
@@ -233,7 +260,7 @@ public class WhitesourceTask extends Task {
             }
 
             projectInfos.add(projectInfo);
-            log("Found " + dependencies.size() + " direct dependencies");
+            logger.info("Found " + dependencies.size() + " direct dependencies");
             debugAgentProjectInfos(projectInfos);
         }
     }
@@ -261,27 +288,27 @@ public class WhitesourceTask extends Task {
                         dependency.addChecksum(entry.getKey(), entry.getValue());
                     }
                 } catch (Exception e) {
-                   log("Failed to calculate javaScript hash for file: " + dependencyFile.getPath() + ", error: "+e.getMessage(), Project.MSG_WARN);
+                    logger.warn("Failed to calculate javaScript hash for file: " + dependencyFile.getPath() + ", error: "+e.getMessage());
                 }
             }
 
             // Calculate super hash
             ChecksumUtils.calculateSuperHash(dependency, dependencyFile);
         } catch (IOException e) {
-            log("Failed to create dependency " + fileName + " to dependency list: " + e.getMessage(), Project.MSG_ERR);
+            logger.error("Failed to create dependency " + fileName + " to dependency list: " + e.getMessage());
             dependency = null;
         }
         return dependency;
     }
 
     private void createService() {
-        log("Service Url is " + wssUrl);
+        logger.info("Service Url is " + wssUrl);
         service = new WhitesourceService(Constants.AGENT_TYPE, Constants.AGENT_VERSION, Constants.PLUGIN_VERSION, wssUrl);
     }
 
     private void checkPolicies() {
         if (shouldCheckPolicies) {
-            log("Checking policies");
+            logger.info("Checking policies");
             try {
                 CheckPolicyComplianceResult result = service.checkPolicyCompliance(
                         apiKey, product, productVersion, projectInfos, forceCheckAllDependencies);
@@ -295,7 +322,7 @@ public class WhitesourceTask extends Task {
     private void handlePoliciesResult(CheckPolicyComplianceResult result) {
         // generate report
         try {
-            log("Creating policies report", Project.MSG_INFO);
+            logger.info("Creating policies report");
             PolicyCheckReport report = new PolicyCheckReport(result);
             report.generate(policyCheck.getReportdir(), false);
         } catch (IOException e) {
@@ -308,19 +335,19 @@ public class WhitesourceTask extends Task {
             String forceUpdateMessage = "Some dependencies violate open source policies, however all were force updated to organization inventory.";
             if (forceUpdate) {
                 if (policyCheck.isFailonrejection()) {
-                    log(forceUpdateMessage, Project.MSG_WARN);
+                    logger.warn(forceUpdateMessage);
                     error(rejectionsErrorMessage);
                 }
             } else if (policyCheck.isFailonrejection()) {
-                log(rejectionsErrorMessage, Project.MSG_WARN);
+                logger.warn(rejectionsErrorMessage);
             }
         } else {
-            log("All dependencies conform with open source policies");
+            logger.info("All dependencies conform with open source policies");
         }
     }
 
     private void updateInventory() {
-        log("Updating White Source");
+        logger.info("Updating White Source");
         try {
             UpdateInventoryResult result = service.update(apiKey, product, productVersion, projectInfos);
             logUpdateResult(result);
@@ -330,28 +357,28 @@ public class WhitesourceTask extends Task {
     }
 
     private void logUpdateResult(UpdateInventoryResult result) {
-        log("White Source update results:");
-        log("White Source organization: " + result.getOrganization());
+        logger.info("White Source update results:");
+        logger.info("White Source organization: " + result.getOrganization());
 
         // newly created projects
         Collection<String> createdProjects = result.getCreatedProjects();
         if (createdProjects.isEmpty()) {
-            log("No new projects found");
+            logger.info("No new projects found");
         } else {
-            log(createdProjects.size() + " Newly created projects:");
+            logger.info(createdProjects.size() + " Newly created projects:");
             for (String projectName : createdProjects) {
-                log(projectName);
+                logger.info(projectName);
             }
         }
 
         // updated projects
         Collection<String> updatedProjects = result.getUpdatedProjects();
         if (updatedProjects.isEmpty()) {
-            log("No projects were updated");
+            logger.info("No projects were updated");
         } else {
-            log(updatedProjects.size() + " existing projects were updated:");
+            logger.info(updatedProjects.size() + " existing projects were updated:");
             for (String projectName : updatedProjects) {
-                log(projectName);
+                logger.info(projectName);
             }
         }
     }
@@ -360,7 +387,7 @@ public class WhitesourceTask extends Task {
         if (failOnError) {
             throw new BuildException(errorMsg);
         } else {
-            log(errorMsg, Project.MSG_ERR);
+            logger.error(errorMsg);
         }
     }
 
@@ -368,28 +395,30 @@ public class WhitesourceTask extends Task {
         if (failOnError) {
             throw new BuildException(ex);
         } else {
-            log(ex, Project.MSG_ERR);
+            if(ex != null) {
+                logger.error(ex.getMessage());
+            }
         }
     }
 
     private void debugAgentProjectInfos(Collection<AgentProjectInfo> projectInfos) {
-        log("----------------- dumping projectInfos -----------------", Project.MSG_DEBUG);
-        log("Total number of projects : " + projectInfos.size(), Project.MSG_DEBUG);
+        logger.debug("----------------- dumping projectInfos -----------------");
+        logger.debug("Total number of projects : " + projectInfos.size());
         for (AgentProjectInfo projectInfo : projectInfos) {
-            log("Project coordinates: " + projectInfo.getCoordinates(), Project.MSG_DEBUG);
-            log("Project parent coordinates: " + projectInfo.getParentCoordinates(), Project.MSG_DEBUG);
-            log("Project project token: " + projectInfo.getProjectToken(), Project.MSG_DEBUG);
+            logger.debug("Project coordinates: " + projectInfo.getCoordinates());
+            logger.debug("Project parent coordinates: " + projectInfo.getParentCoordinates());
+            logger.debug("Project project token: " + projectInfo.getProjectToken());
 
             Collection<DependencyInfo> dependencies = projectInfo.getDependencies();
-            log("total # of dependencies: " + dependencies.size(), Project.MSG_DEBUG);
+            logger.debug("total # of dependencies: " + dependencies.size());
             for (DependencyInfo info : dependencies) {
-                log(info + " SHA-1: " + info.getSha1(), Project.MSG_DEBUG);
+                logger.debug(info + " SHA-1: [" + info.getSha1() + "], SuperHash: [" + info.getFullHash() + "]");
             }
         }
-        log("----------------- dump finished -----------------", Project.MSG_DEBUG);
+        logger.debug("----------------- dump finished -----------------");
     }
 
-	/* --- Property set methods --- */
+    /* --- Property set methods --- */
 
     public void setFailonerror(boolean failonerror) {
         this.failOnError = failonerror;
@@ -409,6 +438,10 @@ public class WhitesourceTask extends Task {
 
     public void setWssurl(String wssurl) {
         this.wssUrl = wssurl;
+    }
+
+    public void setLogLevel(String logLevel) {
+        this.logLevel = logLevel;
     }
 
     public void setProduct(String product) {
