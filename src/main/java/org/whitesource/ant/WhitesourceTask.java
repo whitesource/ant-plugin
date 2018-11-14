@@ -15,12 +15,14 @@
  */
 package org.whitesource.ant;
 
+import ch.qos.logback.classic.Level;
 import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.BuildException;
 import org.apache.tools.ant.Project;
 import org.apache.tools.ant.Task;
 import org.apache.tools.ant.types.FileSet;
 import org.apache.tools.ant.types.Path;
+import org.slf4j.Logger;
 import org.whitesource.agent.api.dispatch.CheckPolicyComplianceResult;
 import org.whitesource.agent.api.dispatch.UpdateInventoryResult;
 import org.whitesource.agent.api.model.AgentProjectInfo;
@@ -45,7 +47,7 @@ import java.util.*;
  */
 public class WhitesourceTask extends Task {
 
-	/* --- Property members --- */
+    /* --- Property members --- */
 
     /**
      * Unique identifier of the organization with White Source.
@@ -135,6 +137,9 @@ public class WhitesourceTask extends Task {
 	/* --- Private methods --- */
 
     private void validateAndPrepare() {
+
+        setLoggerConfiguration();
+
         // api key
         if (StringUtils.isBlank(apiKey)) {
             error("Missing API Key");
@@ -184,6 +189,11 @@ public class WhitesourceTask extends Task {
                 error("Policies report directory doesn't exists and can not be created");
             }
         }
+    }
+
+    private static void setLoggerConfiguration() {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        root.setLevel(Level.INFO);
     }
 
     private void addDefaultPaths(Module module) {
@@ -261,7 +271,7 @@ public class WhitesourceTask extends Task {
                         dependency.addChecksum(entry.getKey(), entry.getValue());
                     }
                 } catch (Exception e) {
-                   log("Failed to calculate javaScript hash for file: " + dependencyFile.getPath() + ", error: "+e.getMessage(), Project.MSG_WARN);
+                    log("Failed to calculate javaScript hash for file: " + dependencyFile.getPath() + ", error: "+e.getMessage(), Project.MSG_WARN);
                 }
             }
 
@@ -389,7 +399,7 @@ public class WhitesourceTask extends Task {
         log("----------------- dump finished -----------------", Project.MSG_DEBUG);
     }
 
-	/* --- Property set methods --- */
+    /* --- Property set methods --- */
 
     public void setFailonerror(boolean failonerror) {
         this.failOnError = failonerror;
